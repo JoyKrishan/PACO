@@ -48,7 +48,7 @@ def tokenize_code_json(json_file, output_file, tokenizer):
 if __name__ == "__main__":
 
     code_corpus = os.path.join(PROCESSED_DATA_DIR, 'code_corpus.txt')
-    patch_json_file = os.path.join(PROCESSED_DATA_DIR, 'paco_dataset_diff_files.json')
+    patch_json_file = os.path.join(PROCESSED_DATA_DIR, 'paco_dataset_diff_files_frag.json')
     out_file = os.path.join(PROCESSED_DATA_DIR, 'tokenized_dataset.json')
 
     ctokenizer = ai_tokenize_code(code_corpus)
