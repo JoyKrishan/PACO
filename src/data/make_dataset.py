@@ -18,10 +18,11 @@ def write_to_csv(data, out_path):
 
 def main(mainpath):
     logger = logging.getLogger(__name__)
+    data = []
 
-    if os.path.basename(mainpath) == "Large": # if large then we perform on operation
+    if os.path.basename(mainpath).lower() == "large": # if large then we perform on operation
         logger.info('Processing: Large patch dataset')
-        data = []
+
         for root, dirname, filenames in os.walk(mainpath):
             for filename in filenames:
                 try:
@@ -55,7 +56,57 @@ def main(mainpath):
                 except Exception as e:
                     logger.error("Exception", exc_info=True)
                     continue
-        
+
+    elif os.path.basename(mainpath).lower() == "small": # if small then we perform on operation
+        logger.info("Processing: Small patch dataset")
+
+        for root, dirnames, filenames in os.walk(mainpath):
+            for filename in filenames:
+                try:
+                    components = root.split("/")
+
+                    if "correct" in components:
+                        correct_idx = components.index("correct")
+                        label = "correct"
+                        tool = components[correct_idx + 1]
+                        if tool == "ICSE18":
+                            tool = filename.split("-")[3]
+                            dataset =  "Defects4J-" + filename.split("-")[1] + "-" + filename.split("-")[2]
+                        else:
+                            dataset = "Defects4J-" + components[overfitting_idx + 2] + "-" + filename.split("-")[2] # following the Large dataset naming convention
+
+                        buggy_component = get_diff_files_frag(os.path.join(root, filename), type="buggy")
+                        patch_compnent = get_diff_files_frag(os.path.join(root, filename), type="patched")
+                    
+                    elif "overfitting" in components:
+                        overfitting_idx = components.index("overfitting")
+                        label = "overfitting"
+                        tool = components[overfitting_idx + 1]
+
+                        if tool == "ICSE18":
+                            tool = filename.split("-")[3]
+                            dataset = "Defects4J-" + filename.split("-")[1] + "-" + filename.split("-")[2]
+                        else:
+                            dataset = "Defects4J-" + components[overfitting_idx + 2] + "-" + filename.split("-")[2] 
+
+                        buggy_component = get_diff_files_frag(os.path.join(root, filename), type="buggy")
+                        patch_compnent = get_diff_files_frag(os.path.join(root, filename), type="patched")
+
+                    else: # if "overfitting" or "correct" dir not found in path then we skip
+                        logger.warn(f"Path with no 'overfitting' or 'correct' dir: {root}")
+
+                    data.append({
+                        "dataset": dataset,
+                        "tool": tool,
+                        "buggy": buggy_component,
+                        "patch": patch_compnent,
+                        "label": label
+                    })
+
+                except Exception as e:
+                    logger.error("Exception", exc_info=True)
+                    continue
+
         return data
 
 
@@ -86,7 +137,14 @@ if __name__ == '__main__':
     small_subset_datapath =  os.path.join(data_path, "all_patches", "Small")
     large_subset_datapath = os.path.join(data_path, "all_patches", "Large")
 
+    # # writing csv for the large-patch dataset here
     data = main(large_subset_datapath)
     csv_file_path = os.path.join(output_path, "large-patches.csv")
-    open(os.path.join(output_path, "large-patches.csv"), "w").close()
+    open(csv_file_path, "w").close()
+    write_to_csv(data, csv_file_path)
+
+    # writing csv for the small-patch dataset here
+    data = main(small_subset_datapath)
+    csv_file_path = os.path.join(output_path, "small-patches.csv")
+    open(csv_file_path, "w").close()
     write_to_csv(data, csv_file_path)
