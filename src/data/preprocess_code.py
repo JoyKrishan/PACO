@@ -3,10 +3,13 @@ import os
 from pathlib import Path
 from diff_processing import *
 import json
+import csv
 
 PROJECT_DIR = Path(__file__).resolve().parents[2]
 PROCESSED_DATA_DIR = os.path.join(PROJECT_DIR, 'data', 'processed')
 # PATCHES_DIR = os.path.join(PROJECT_DIR, 'data', 'raw', 'Patches', 'Patches_others')
+CSV_OUTPUT_PATH = os.path.join(PROJECT_DIR, 'data', 'csv_data')
+OUTPUT_FILE_NAME = "patches.csv"
 
 json_data = []
 used_numbers = set()
@@ -39,8 +42,7 @@ def get_all_patches(patches, patch_dir):
     return all_patches
 
 def create_data_with_diff(correct_patch_dir, incorrect_patch_dir):
- 
-    write_file = os.path.join(PROCESSED_DATA_DIR, 'paco_dataset_diff_files_frag.json')
+
     all_correct_patch_files = os.listdir(correct_patch_dir)
     all_incorrect_patch_files = os.listdir(incorrect_patch_dir)
     all_bug_ids = set()
@@ -49,9 +51,11 @@ def create_data_with_diff(correct_patch_dir, incorrect_patch_dir):
         unique_id = generate_unique_random_number()
         names = file_name.split("-")
         bug_id = names[1] + "-" + names[2]
+
         if bug_id in all_bug_ids:
             continue
         all_bug_ids.add(bug_id)
+
         try:
             buggy = get_diff_files_frag(os.path.join(correct_patch_dir, file_name),type='buggy') # find the buggy code from one item
 
@@ -63,8 +67,8 @@ def create_data_with_diff(correct_patch_dir, incorrect_patch_dir):
 
             incorrect_patches = get_all_patches(incorrect_patch_files_for_specific_bug, incorrect_patch_dir)
 
-        except Exception:
-            print(Exception)
+        except Exception as e:
+            print(e)
             continue
 
         data.append({
@@ -75,13 +79,40 @@ def create_data_with_diff(correct_patch_dir, incorrect_patch_dir):
             "correct_patches": correct_patches,
             "incorrect_patches": incorrect_patches
             }),
-        print(f"Patches appended for {bug_id}!")
-    with open(write_file, 'w') as outfile:
-        json.dump(data, outfile, indent=4)
+        
+    return data
+    
+def build_csv(data):
+    csv_data  = []
+    for item in data:
+        # populate correct patches
+        for patch in item["correct_patches"]:
+            csv_data.append({
+                "id": item["id"],
+                "buggy_code": item["buggy_code"],
+                "patch": patch,
+                "patch_type": "correct"
+            })
+        # populate incorrect patches
+        for patch in item["incorrect_patches"]:
+            csv_data.append({
+                "id": item["id"],
+                "buggy_code": item["buggy_code"],
+                "patch": patch,
+                "patch_type": "incorrect"
+            })
+                
+    # csv creation
+    full_path = os.path.join(CSV_OUTPUT_PATH, OUTPUT_FILE_NAME)
+    os.makedirs(CSV_OUTPUT_PATH, exist_ok=True)
 
-    print(all_bug_ids)
-    print(f"Total bugs found: {len(all_bug_ids)}")
-    print("Data written to bug_data.json successfully!")
+    with open(full_path, 'w', newline='') as csvfile:
+        fieldnames = ['id', 'file_name', 'buggy_code', 'patch', 'patch_type']
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
+        writer.writeheader()
+        writer.writerows(csv_data)
+
     
 
 """Commenting this functionality for now
@@ -104,4 +135,5 @@ if __name__ == '__main__':
     correct_patch_dir = os.path.join(PROJECT_DIR, 'data', 'raw', 'custom_patches', 'correct')
     incorrect_patch_dir = os.path.join(PROJECT_DIR, 'data', 'raw', 'custom_patches', 'overfitting')
 
-    create_data_with_diff(correct_patch_dir, incorrect_patch_dir)
+    data = create_data_with_diff(correct_patch_dir, incorrect_patch_dir)
+    build_csv(data)

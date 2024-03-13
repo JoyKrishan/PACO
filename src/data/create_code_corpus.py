@@ -21,6 +21,6 @@ if __name__ == "__main__":
 
     PROJECT_DIR = Path(__file__).resolve().parents[2]
     PROCESSED_DATA_DIR = os.path.join(PROJECT_DIR, 'data', 'processed')
-    json_file = os.path.join(PROCESSED_DATA_DIR, 'paco_dataset_diff_files.json')
+    json_file = os.path.join(PROCESSED_DATA_DIR, 'paco_dataset_diff_files_frag.json')
     output_file = os.path.join(PROCESSED_DATA_DIR, 'code_corpus.txt')
     code_snippets = extract_and_write_code(json_file)

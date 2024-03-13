@@ -145,13 +145,7 @@ def custom_collate_fn(batch):
 # tokenizer = ai_tokenize_code(code_corpus)
 
 
-data_path = os.path.join(PROCESSED_DATA_DIR, "tokenized_dataset.json")
+# data_path = os.path.join(PROCESSED_DATA_DIR, "tokenized_dataset.json")
 
-dataset = CodeDataset(data_path) 
-dataloader = DataLoader(dataset, batch_size=4, collate_fn=custom_collate_fn) 
-
-for buggy_code, correct_patches, incorrect_patches in dataloader:
-    print(buggy_code.shape)
-    print(correct_patches.shape)
-    print(incorrect_patches.shape)
-    break
+# dataset = CodeDataset(data_path) 
+# dataloader = DataLoader(dataset, batch_size=4, collate_fn=custom_collate_fn) 
