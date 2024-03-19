@@ -107,7 +107,7 @@ def main(mainpath):
                     logger.error("Exception", exc_info=True)
                     continue
 
-        return data
+    return data
 
 
 if __name__ == '__main__':
@@ -137,7 +137,7 @@ if __name__ == '__main__':
     small_subset_datapath =  os.path.join(data_path, "all_patches", "Small")
     large_subset_datapath = os.path.join(data_path, "all_patches", "Large")
 
-    # # writing csv for the large-patch dataset here
+    # writing csv for the large-patch dataset here
     data = main(large_subset_datapath)
     csv_file_path = os.path.join(output_path, "large-patches.csv")
     open(csv_file_path, "w").close()
