@@ -1,52 +1,58 @@
 import re
 
-def get_diff_files(patch,type):
-    with open(patch, 'r') as file:
-        lines = ''
-        flag = True
-        for line in file:
-            line = line.strip()
-            if '*/' in line: # if multiline comments at the start of file, we skip
-                flag = True
-                continue
-            if flag == False:
-                continue
-            if line != '':
-                if line.startswith('@@') or line.startswith('diff') or line.startswith('index'):
-                    continue
-                elif '/*' in line: # if multiline comments after hunk indicators, we skip
-                    flag = False
-                    continue
-                elif type == 'buggy':
-                    if line.startswith('---'):
-                        line = line.split(' ')[1]
-                        lines += line.strip() + ' '
-                    elif line.startswith('-'):
-                        if line[1:].strip().startswith('//'): # if single line comments, we skip
-                            continue
-                        lines += line[1:].strip() + ' '
-                    elif line.startswith('+'):
-                        # do nothing
-                        pass
-                    else:
-                        lines += line.strip() + ' '
-                elif type == 'patched':
-                    if line.startswith('+++'):
-                        line = line.split(' ')[1]
-                        lines += line.strip() + ' '
-                    elif line.startswith('+'):
-                        if line[1:].strip().startswith('//'): # if single line comments, we skip
-                            continue
-                        lines += line[1:].strip() + ' '
-                    elif line.startswith('-'): 
-                        # do nothing
-                        pass
-                    else:
-                        lines += line.strip() + ' '
-        return lines
+# def get_diff_files(patch,type):
+#     with open(patch, 'r') as file:
+#         lines = ''
+#         flag = True
+#         for line in file:
+#             line = line.strip()
+#             if '*/' in line: # if multiline comments at the start of file, we skip
+#                 flag = True
+#                 continue
+#             if flag == False:
+#                 continue
+#             if line != '':
+#                 if line.startswith('@@') or line.startswith('diff') or line.startswith('index'):
+#                     continue
+#                 elif '/*' in line: # if multiline comments after hunk indicators, we skip
+#                     flag = False
+#                     continue
+#                 elif type == 'buggy':
+#                     if line.startswith('---'):
+#                         line = line.split(' ')[1]
+#                         lines += line.strip() + ' '
+#                     elif line.startswith('-'):
+#                         if line[1:].strip().startswith('//'): # if single line comments, we skip
+#                             continue
+#                         lines += line[1:].strip() + ' '
+#                     elif line.startswith('+'):
+#                         # do nothing
+#                         pass
+#                     else:
+#                         lines += line.strip() + ' '
+#                 elif type == 'patched':
+#                     if line.startswith('+++'):
+#                         line = line.split(' ')[1]
+#                         lines += line.strip() + ' '
+#                     elif line.startswith('+'):
+#                         if line[1:].strip().startswith('//'): # if single line comments, we skip
+#                             continue
+#                         lines += line[1:].strip() + ' '
+#                     elif line.startswith('-'): 
+#                         # do nothing
+#                         pass
+#                     else:
+#                         lines += line.strip() + ' '
+#         return lines
     
 
 def get_diff_files_frag(patch,type):
+    """ 
+        version:2 
+        Here not considering the filepath in the patch data
+        fixed a bug: previously it was not eliminating the line that
+        starts with *
+    """
     with open(patch, 'r') as file:
         lines = ''
         p =  r"\s+"
@@ -59,15 +65,17 @@ def get_diff_files_frag(patch,type):
             if flag == False:
                 continue
             if line != '':
-                if line.startswith('@@') or line.startswith('diff') or line.startswith('index') or line.startswith('Binary'):
+                if line.startswith('@@') or line.startswith('diff') or line.startswith('index') or line.startswith('Binary') or line.startswith('*'):
                     continue
                 elif '/*' in line:
                     flag = False
                     continue
                 elif type == 'buggy':
                     if line.startswith('---') or line.startswith('PATCH_DIFF_ORIG=---'):
-                        line = re.split(pattern=p, string=line.split(' ')[1].strip())
-                        lines += ' '.join(line) + ' '
+                        # version: 1
+                        # line = re.split(pattern=p, string=line.split(' ')[1].strip())
+                        # lines += ' '.join(line) + ' '
+                        continue
                     elif line.startswith('-'):
                         if line[1:].strip().startswith('//'):
                             continue
@@ -93,9 +101,10 @@ def get_diff_files_frag(patch,type):
                     if line.startswith('PATCH_DIFF_ORIG=---'):
                         continue
                     elif line.startswith('+++'):
-                        # continue
-                        line = re.split(pattern=p, string=line.split(' ')[1].strip())
-                        lines += ' '.join(line) + ' '
+                        continue
+                        # version: 1
+                        # line = re.split(pattern=p, string=line.split(' ')[1].strip())
+                        # lines += ' '.join(line) + ' '
                     elif line.startswith('+'):
                         if line[1:].strip().startswith('//'):
                             continue
@@ -200,4 +209,4 @@ from pathlib import Path
 PROJECT_DIR = Path(__file__).resolve().parents[2]
 patch_path = os.path.join(PROJECT_DIR, 'data', 'raw', 'custom_patches', 'correct', 'patch1-Chart-1-AVATAR.patch')
 
-print(type(get_diff_files(patch_path, 'buggy')))
+# print(type(get_diff_files(patch_path, 'buggy')))
