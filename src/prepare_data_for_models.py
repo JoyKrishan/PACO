@@ -17,7 +17,7 @@ def csv_train_test_split(save_path, df):
         df: full dataframe that should be divided and parsed to build the iterators
 
         @return
-        train_iterator, valid_iterator, test_iterator
+        train_iterator, valid_iterator, test_iterator, tokenizer
     """
 
     df = df.sample(frac=1).reset_index(drop=True)  
@@ -88,7 +88,7 @@ def build_train_val_test_iter(save_path, df, device, tokenizer_name = "FacebookA
         ("label", None),
         ("numerical_label", LABEL)]
     
-    print(f"[INFO] Building train, val and test tabular dataset.........")
+    print(f"[INFO] Building train, val and test tabular dataset")
     train_dataset, val_dataset, test_dataset = build_datasets(train_materials[0], val_materials[0], test_materials[0], fields)
 
     print(f"** Number of training examples: {len(train_dataset.examples)}")
@@ -102,4 +102,5 @@ def build_train_val_test_iter(save_path, df, device, tokenizer_name = "FacebookA
     sort_within_batch = False,
     device = device)
 
-    return train_iterator, valid_iterator, test_iterator
+    print(f"Batch size: {batch_size}")
+    return train_iterator, valid_iterator, test_iterator, tokenizer
