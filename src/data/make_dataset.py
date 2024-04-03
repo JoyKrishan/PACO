@@ -2,6 +2,7 @@ import logging
 from pathlib import Path
 from dotenv import find_dotenv, load_dotenv
 import os, csv 
+import pandas as pd
 from diff_processing import get_diff_files_frag
 
 
@@ -138,13 +139,20 @@ if __name__ == '__main__':
     large_subset_datapath = os.path.join(data_path, "all_patches", "Large")
 
     # writing csv for the large-patch dataset here
-    data = main(large_subset_datapath)
-    csv_file_path = os.path.join(output_path, "large-patches.csv")
-    open(csv_file_path, "w").close()
-    write_to_csv(data, csv_file_path)
+    # data = main(large_subset_datapath)
+    large_csv_file_path = os.path.join(output_path, "large-patches.csv")
+    # open(large_csv_file_path, "w").close()
+    # write_to_csv(data, large_csv_file_path)
 
     # writing csv for the small-patch dataset here
-    data = main(small_subset_datapath)
-    csv_file_path = os.path.join(output_path, "small-patches.csv")
-    open(csv_file_path, "w").close()
-    write_to_csv(data, csv_file_path)
+    # data = main(small_subset_datapath)
+    small_csv_file_path = os.path.join(output_path, "small-patches.csv")
+    # open(small_csv_file_path, "w").close()
+    # write_to_csv(data, small_csv_file_path)
+
+    # creating a combined dataset
+    small_df = pd.read_csv(small_csv_file_path)
+    large_df = pd.read_csv(large_csv_file_path)
+
+    full_df = pd.concat([small_df, large_df], ignore_index=True)
+    full_df.to_csv(os.path.join(output_path, "all-patches.csv"), index=False)
