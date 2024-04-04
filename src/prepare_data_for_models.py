@@ -103,4 +103,4 @@ def build_train_val_test_iter(save_path, df, device, tokenizer_name = "FacebookA
     device = device)
 
     print(f"Batch size: {batch_size}")
-    return train_iterator, valid_iterator, test_iterator, tokenizer
+    return train_iterator, valid_iterator, test_iterator, tokenizer, batch_size
