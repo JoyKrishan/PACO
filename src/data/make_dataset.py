@@ -139,16 +139,16 @@ if __name__ == '__main__':
     large_subset_datapath = os.path.join(data_path, "all_patches", "Large")
 
     # writing csv for the large-patch dataset here
-    # data = main(large_subset_datapath)
+    data = main(large_subset_datapath)
     large_csv_file_path = os.path.join(output_path, "large-patches.csv")
-    # open(large_csv_file_path, "w").close()
-    # write_to_csv(data, large_csv_file_path)
+    open(large_csv_file_path, "w").close()
+    write_to_csv(data, large_csv_file_path)
 
     # writing csv for the small-patch dataset here
-    # data = main(small_subset_datapath)
+    data = main(small_subset_datapath)
     small_csv_file_path = os.path.join(output_path, "small-patches.csv")
-    # open(small_csv_file_path, "w").close()
-    # write_to_csv(data, small_csv_file_path)
+    open(small_csv_file_path, "w").close()
+    write_to_csv(data, small_csv_file_path)
 
     # creating a combined dataset
     small_df = pd.read_csv(small_csv_file_path)
