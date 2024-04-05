@@ -112,7 +112,6 @@ def create_embedding_plot_with_best_model(model_path, iterator, tokenizer, write
 
             correct_metadata = ['buggy'] * bug_embd_correct.shape[0] + ['correct_patch'] * patch_embd_correct.shape[0]
             incorrect_metadata = ['buggy'] * bug_embd_incorrect.shape[0] + ['incorrect_patch'] * patch_embd_incorrect.shape[0]
-            print('I am here')
             # Add embeddings to TensorBoard
             writer.add_embedding(correct_embeddings.reshape(correct_embeddings.shape[0], -1), metadata=correct_metadata, tag='correct', global_step=0)
             writer.add_embedding(incorrect_embeddings.reshape(incorrect_embeddings.shape[0], -1), metadata=incorrect_metadata, tag='incorrect', global_step=0)
@@ -126,14 +125,13 @@ def create_embedding_plot_with_best_model(model_path, iterator, tokenizer, write
               prompt='Dataset to test', required=True)
 @click.option('--set', type=click.Choice(['train', 'val', 'test']), 
               prompt='Which set to run on (create embedding or print performance)', required=True)
-@click.option('--metrics', type=click.Choice(['yes', 'no']), required=False, prompt='Select only if Test set selected, if no selected embedding will be created')
+@click.option('--metrics', type=click.Choice(['yes', 'no']), required=False, prompt='RUN METRICS TEST: Select only if Test set selected, if no selected embedding will be created')
 def main(dataset, set, metrics):
 
     if dataset == 'all':
 
         train_itr, val_itr, test_itr, tokenizer, batch_size = build_train_val_test_iter(all_dataset_output, all_patches_df, device)
         writer_path =  os.path.join(notebook_path, "runs/all_dataset/all_runs/")
-        hyper_parameter_writer = SummaryWriter(writer_path + "hyperparameter_all")
 
         if set == 'train':
             hyper_parameter_writer = SummaryWriter(writer_path + "hyperparameter_train")
