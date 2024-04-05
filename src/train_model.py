@@ -151,7 +151,7 @@ if __name__ == "__main__":
     # load dataset output to build the train, val and test CSVs
     all_dataset_output = os.path.join(dataset_fullpath, "model_output", "all_patches")
     large_dataset_output = os.path.join(dataset_fullpath, "model_output", "large_patches")
-    small_dataset_output = os.path.join(dataset_fullpath, "model_output", "large_patches")
+    small_dataset_output = os.path.join(dataset_fullpath, "model_output", "small_patches")
 
     notebook_path = os.path.join(project_root, "notebooks")
 
