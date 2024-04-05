@@ -25,89 +25,190 @@ from prepare_data_for_models import build_train_val_test_iter
 from supconloss_with_cosine import SupConLossWithConsine
 from src.models.lstm_code_encoder import LSTMCodeEncoder
 from torch.utils.tensorboard import SummaryWriter
-import random, time
+import random
+from sklearn.linear_model import LogisticRegression
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, roc_auc_score 
 
 
-def create_embedding_plot_with_best_model(model_path, iterator, tokenizer, writer):
+def create_train_test_data(code_encoder, train_itr, val_itr, test_itr):
+
+    cosine_sim = nn.CosineSimilarity(dim = 2)
+
+    def create_x_y_on_iterator(iterator):
+        X = []
+        Y = []
+
+        for batch in iterator:
+            buggy_embeddings = code_encoder(batch.buggy.T)
+            patch_embeddings = code_encoder(batch.patch.T)
+
+            sim_score = cosine_sim(buggy_embeddings, patch_embeddings)
+            X.append(sim_score.cpu().detach().numpy())           
+            Y.append(batch.numerical_label.cpu().detach().numpy())
+        
+        X = np.vstack(X)
+        Y = np.concatenate(Y)
+        return X, Y
+
+    X_train, Y_train = create_x_y_on_iterator(train_itr)
+    X_val, Y_val = create_x_y_on_iterator(val_itr)
+    X_test, Y_test = create_x_y_on_iterator(test_itr)
+    return X_train, Y_train, X_val, Y_val, X_test, Y_test
+
+
+def patch_classifier(model_class, model_name, X_train, Y_train, X_val, Y_val, X_test, Y_test):
+
+    model = model_class()
+
+    model.fit(X_train, Y_train)
+    predictions_train = model.predict(X_test) 
+    predictions_train_proba = model.predict_proba(X_test)[:, 1]
+
+    # Calculate Metrics
+    accuracy = accuracy_score(Y_test, predictions_train)
+    precision = precision_score(Y_test, predictions_train)
+    recall = recall_score(Y_test, predictions_train)
+    f1 = f1_score(Y_test, predictions_train)
+    auc = roc_auc_score(Y_test, predictions_train_proba) 
+
+    print(f"***************Patch CLassifier as {model_name}*********************")
+    print("Performance On the TEST SET...........")
+    print(f"Accuracy: {accuracy:.3f}")
+    print(f"Precision: {precision:.3f}")
+    print(f"Recall: {recall:.3f}")
+    print(f"F1-Score: {f1:.3f}")
+    print(f"AUC: {auc:.3f}")
+
+
+def create_embedding_plot_with_best_model(model_path, iterator, tokenizer, writer, embedding):
+
     best_code_encoder = LSTMCodeEncoder(tokenizer.vocab_size, 512, 512, num_layers=1).to(device)
     best_code_encoder = nn.DataParallel(best_code_encoder)
     best_code_encoder.load_state_dict(torch.load(model_path))
 
-    with torch.no_grad():
-        data_list = list(iterator)  # Potential memory concerns for large datasets
-        random_index = random.randint(0, len(data_list) - 1)
-        random_batch = data_list[random_index] 
+    if embedding == True:
+        with torch.no_grad():
+            data_list = list(iterator)  # Potential memory concerns for large datasets
+            random_index = random.randint(0, len(data_list) - 1)
+            random_batch = data_list[random_index] 
 
-        bug_embd = best_code_encoder(random_batch.buggy.T)
-        patch_embd = best_code_encoder(random_batch.patch.T)
-        labels = random_batch.numerical_label
+            bug_embd = best_code_encoder(random_batch.buggy.T)
+            patch_embd = best_code_encoder(random_batch.patch.T)
+            labels = random_batch.numerical_label
 
-        # Separate embeddings based on labels
-        correct_mask = labels == 1 
-        incorrect_mask = labels == -1 
+            # Separate embeddings based on labels
+            correct_mask = labels == 1 
+            incorrect_mask = labels == -1 
 
-        bug_embd_correct = bug_embd[correct_mask] 
-        bug_embd_incorrect = bug_embd[incorrect_mask]
-        patch_embd_incorrect = patch_embd[incorrect_mask]
+            bug_embd_correct = bug_embd[correct_mask] 
+            patch_embd_correct = patch_embd[correct_mask]
+            bug_embd_incorrect = bug_embd[incorrect_mask]
+            patch_embd_incorrect = patch_embd[incorrect_mask]
 
-        correct_embeddings = torch.cat([bug_embd_correct, patch_embd_correct], dim=0)
-        incorrect_embeddings = torch.cat([bug_embd_incorrect, patch_embd_incorrect], dim=0)
+            correct_embeddings = torch.cat([bug_embd_correct, patch_embd_correct], dim=0)
+            incorrect_embeddings = torch.cat([bug_embd_incorrect, patch_embd_incorrect], dim=0)
 
-        correct_metadata = ['buggy'] * bug_embd_correct.shape[0] + ['correct_patch'] * patch_embd_correct.shape[0]
-        incorrect_metadata = ['buggy'] * bug_embd_incorrect.shape[0] + ['incorrect_patch'] * patch_embd_incorrect.shape[0]
-
-        # Add embeddings to TensorBoard
-        writer.add_embedding(correct_embeddings.reshape(correct_embeddings.shape[0], -1), metadata=correct_metadata, tag='correct', global_step=0)
-        writer.add_embedding(incorrect_embeddings.reshape(incorrect_embeddings.shape[0], -1), metadata=incorrect_metadata, tag='incorrect', global_step=0)
+            correct_metadata = ['buggy'] * bug_embd_correct.shape[0] + ['correct_patch'] * patch_embd_correct.shape[0]
+            incorrect_metadata = ['buggy'] * bug_embd_incorrect.shape[0] + ['incorrect_patch'] * patch_embd_incorrect.shape[0]
+            print('I am here')
+            # Add embeddings to TensorBoard
+            writer.add_embedding(correct_embeddings.reshape(correct_embeddings.shape[0], -1), metadata=correct_metadata, tag='correct', global_step=0)
+            writer.add_embedding(incorrect_embeddings.reshape(incorrect_embeddings.shape[0], -1), metadata=incorrect_metadata, tag='incorrect', global_step=0)
 
     writer.close()
+    return best_code_encoder
+
 
 @click.command()
 @click.option('--dataset', type=click.Choice(['small', 'large', 'all']), 
               prompt='Dataset to test', required=True)
 @click.option('--set', type=click.Choice(['train', 'val', 'test']), 
-              prompt='Which set to test', required=True)
-def main(dataset, set):
+              prompt='Which set to run on (create embedding or print performance)', required=True)
+@click.option('--metrics', type=click.Choice(['yes', 'no']), required=False, prompt='Select only if Test set selected, if no selected embedding will be created')
+def main(dataset, set, metrics):
 
     if dataset == 'all':
+
         train_itr, val_itr, test_itr, tokenizer, batch_size = build_train_val_test_iter(all_dataset_output, all_patches_df, device)
         writer_path =  os.path.join(notebook_path, "runs/all_dataset/all_runs/")
         hyper_parameter_writer = SummaryWriter(writer_path + "hyperparameter_all")
+
         if set == 'train':
             hyper_parameter_writer = SummaryWriter(writer_path + "hyperparameter_train")
-            create_embedding_plot_with_best_model(os.path.join(all_dataset_best_model_save_path, "best_model.pth"), train_itr, tokenizer, hyper_parameter_writer)
+            best_code_encoder = create_embedding_plot_with_best_model(os.path.join(all_dataset_best_model_save_path, 
+                                                                                    "best_model.pth"), train_itr, tokenizer, hyper_parameter_writer, True)     
         if set == 'val':
             hyper_parameter_writer = SummaryWriter(writer_path + "hyperparameter_val")
-            create_embedding_plot_with_best_model(os.path.join(all_dataset_best_model_save_path, "best_model.pth"), val_itr, tokenizer, hyper_parameter_writer)
-        if set == 'test':
+            best_code_encoder = create_embedding_plot_with_best_model(os.path.join(all_dataset_best_model_save_path, 
+                                                                                   "best_model.pth"), val_itr, tokenizer, hyper_parameter_writer, True)
+        if set == 'test' and metrics == 'no':
             hyper_parameter_writer = SummaryWriter(writer_path + "hyperparameter_test")
-            create_embedding_plot_with_best_model(os.path.join(all_dataset_best_model_save_path, "best_model.pth"), test_itr, tokenizer, hyper_parameter_writer)
+            best_code_encoder = create_embedding_plot_with_best_model(os.path.join(all_dataset_best_model_save_path, 
+                                                                                   "best_model.pth"), test_itr, tokenizer, hyper_parameter_writer, True)
+        if set == 'test' and metrics == 'yes':
+            hyper_parameter_writer = SummaryWriter(writer_path + "hyperparameter_test")
+            best_code_encoder = create_embedding_plot_with_best_model(os.path.join(all_dataset_best_model_save_path, 
+                                                                                   "best_model.pth"), test_itr, tokenizer, hyper_parameter_writer, False)
+
+            X_train, Y_train, X_val, Y_val, X_test, Y_test = create_train_test_data(best_code_encoder, train_itr, val_itr, test_itr)
+            patch_classifier(LogisticRegression, "LogisticRegression", X_train, Y_train, X_val, Y_val, X_test, Y_test)
+            patch_classifier(DecisionTreeClassifier, "DecisionTreeClassifier", X_train, Y_train, X_val, Y_val, X_test, Y_test)
+            patch_classifier(RandomForestClassifier, "RandomForestClassifier", X_train, Y_train, X_val, Y_val, X_test, Y_test)
 
     if dataset == 'small':
         train_itr, val_itr, test_itr, tokenizer, batch_size = build_train_val_test_iter(small_dataset_output, small_patches_df, device)
         writer_path =  os.path.join(notebook_path, "runs/small_dataset/all_runs/")
         if set == 'train':
             hyper_parameter_writer = SummaryWriter(writer_path + "hyperparameter_train")
-            create_embedding_plot_with_best_model(os.path.join(small_dataset_best_model_save_path, "best_model.pth"), train_itr, tokenizer, hyper_parameter_writer)
+            best_code_encoder = create_embedding_plot_with_best_model(os.path.join(small_dataset_best_model_save_path, 
+                                                               "best_model.pth"), train_itr, tokenizer, hyper_parameter_writer, True)
         if set == 'val':
             hyper_parameter_writer = SummaryWriter(writer_path + "hyperparameter_val")
-            create_embedding_plot_with_best_model(os.path.join(small_dataset_best_model_save_path, "best_model.pth"), val_itr, tokenizer, hyper_parameter_writer)
-        if set == 'test':
+            best_code_encoder = create_embedding_plot_with_best_model(os.path.join(small_dataset_best_model_save_path, 
+                                                               "best_model.pth"), val_itr, tokenizer, hyper_parameter_writer, True)
+        if set == 'test' and metrics == 'no':
             hyper_parameter_writer = SummaryWriter(writer_path + "hyperparameter_test")
-            create_embedding_plot_with_best_model(os.path.join(small_dataset_best_model_save_path, "best_model.pth"), test_itr, tokenizer, hyper_parameter_writer)
+            best_code_encoder = create_embedding_plot_with_best_model(os.path.join(small_dataset_best_model_save_path, 
+                                                               "best_model.pth"), test_itr, tokenizer, hyper_parameter_writer, True)
+        if set == 'test' and metrics == 'yes':
+            hyper_parameter_writer = SummaryWriter(writer_path + "hyperparameter_test")
+            best_code_encoder = create_embedding_plot_with_best_model(os.path.join(small_dataset_best_model_save_path, 
+                                                                                   "best_model.pth"), test_itr, tokenizer, hyper_parameter_writer, False)
+
+            X_train, Y_train, X_val, Y_val, X_test, Y_test = create_train_test_data(best_code_encoder, train_itr, val_itr, test_itr)
+            patch_classifier(LogisticRegression, "LogisticRegression", X_train, Y_train, X_val, Y_val, X_test, Y_test)
+            patch_classifier(DecisionTreeClassifier, "DecisionTreeClassifier", X_train, Y_train, X_val, Y_val, X_test, Y_test)
+            patch_classifier(RandomForestClassifier, "RandomForestClassifier", X_train, Y_train, X_val, Y_val, X_test, Y_test)
+
 
     if dataset == 'large':
         train_itr, val_itr, test_itr, tokenizer, batch_size = build_train_val_test_iter(large_dataset_output, large_patches_df, device)
         writer_path =  os.path.join(notebook_path, "runs/large_dataset/all_runs/")
         if set == 'train':
             hyper_parameter_writer = SummaryWriter(writer_path + "hyperparameter_train")
-            create_embedding_plot_with_best_model(os.path.join(large_dataset_best_model_save_path, "best_model.pth"), train_itr, tokenizer, hyper_parameter_writer)
+            best_code_encoder = create_embedding_plot_with_best_model(os.path.join(large_dataset_best_model_save_path, 
+                                                               "best_model.pth"), train_itr, tokenizer, hyper_parameter_writer, True)
         if set == 'val':
             hyper_parameter_writer = SummaryWriter(writer_path + "hyperparameter_val")
-            create_embedding_plot_with_best_model(os.path.join(large_dataset_best_model_save_path, "best_model.pth"), val_itr, tokenizer, hyper_parameter_writer)
-        if set == 'test':
+            best_code_encoder = create_embedding_plot_with_best_model(os.path.join(large_dataset_best_model_save_path, 
+                                                               "best_model.pth"), val_itr, tokenizer, hyper_parameter_writer, True)
+        if set == 'test' and metrics == 'no':
             hyper_parameter_writer = SummaryWriter(writer_path + "hyperparameter_test")
-            create_embedding_plot_with_best_model(os.path.join(large_dataset_best_model_save_path, "best_model.pth"), test_itr, tokenizer, hyper_parameter_writer)
+            best_code_encoder = create_embedding_plot_with_best_model(os.path.join(large_dataset_best_model_save_path, 
+                                                               "best_model.pth"), test_itr, tokenizer, hyper_parameter_writer, True)
+            
+        if set == 'test' and metrics == 'yes':
+            hyper_parameter_writer = SummaryWriter(writer_path + "hyperparameter_test")
+            best_code_encoder = create_embedding_plot_with_best_model(os.path.join(large_dataset_best_model_save_path, 
+                                                                                   "best_model.pth"), test_itr, tokenizer, hyper_parameter_writer, False)
+
+            X_train, Y_train, X_val, Y_val, X_test, Y_test = create_train_test_data(best_code_encoder, train_itr, val_itr, test_itr)
+            patch_classifier(LogisticRegression, "LogisticRegression", X_train, Y_train, X_val, Y_val, X_test, Y_test)
+            patch_classifier(DecisionTreeClassifier, "DecisionTreeClassifier", X_train, Y_train, X_val, Y_val, X_test, Y_test)
+            patch_classifier(RandomForestClassifier, "RandomForestClassifier", X_train, Y_train, X_val, Y_val, X_test, Y_test)
+
 
 
 if __name__ == "__main__":
