@@ -35,7 +35,7 @@ Automated program repair promises to streamline the debugging process and reduce
 |          | DT       | 88.3     | 0.88 |   
 
 
-*Table 3: Comparison of PaCo with Other Techniques on Small-Scale Dataset*
+*Table 2: Comparison of PaCo with Other Techniques on Small-Scale Dataset*
 
 
 
