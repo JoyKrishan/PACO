@@ -15,7 +15,6 @@ Automated program repair promises to streamline the debugging process and reduce
 | RF          |      | 99.5 | 99.4  | 99.6 | 99.5| 0.99|
 
 
-
 *Table 1: Performance Comparison of Patch Classifiers in the PaCo Framework Across Different Datasets*
 
 
@@ -31,11 +30,8 @@ Automated program repair promises to streamline the debugging process and reduce
 |          | DT       | 57.7     | 0.60 |      
 |          | NB       | 57.9     | 0.71 |      
 | CACHE    |          | 78.0     | 78.0 | 
-| PaCo     | LR       | 95.3     | 0.97 |      
-|          | DT       | 88.3     | 0.88 |   
+| PaCo     | LR       | **95.3**     | **0.97** |      
+|          | DT       | **88.3**     | **0.88** |   
 
 
-*Table 3: Comparison of PaCo with Other Techniques on Small-Scale Dataset*
-
-
-
+*Table 2: Comparison of PaCo with Other Techniques on Small-Scale Dataset*
