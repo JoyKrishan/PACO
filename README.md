@@ -1,4 +1,6 @@
-# PaCo
+# PaCo ![13932402](https://github.com/user-attachments/assets/775f0e1b-80a5-41b1-8a71-64bd92d5f274)![11933147](https://github.com/user-attachments/assets/0820f93d-d63b-4c49-bd08-732997950221)
+
+
 ==============================
 
 Automated program repair promises to streamline the debugging process and reduce manual effort. However, a common problem known as overfitting hinders the success of current APR methods. To tackle this challenge, we introduce PaCo, a novel end-to-end framework for automated patch correctness assessment. PaCo combines a code representation model with a patch correctness classifier. Our code representation model uses contrastive learning to generate meaningful code embeddings, drawing correct patches closer to their buggy counterparts while distancing incorrect patches. The patch correctness classifier then analyzes these embeddings to determine if a patch represents a valid fix. Our approach enhances the accuracy of correct patch identification, potentially minimizing the need for time-consuming test-case execution or less reliable static analysis. On a small, balanced dataset, PaCo demonstrates promising results, achieving an **F1-score of 95.3** and an **AUC of 0.97**. However, its performance highlights the challenges posed by large, imbalanced datasets. Our study also underscores the importance of balanced datasets for effective patch correctness assessment, as they enable models to learn more discriminative features.
